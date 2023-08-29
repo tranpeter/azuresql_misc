@@ -75,3 +75,28 @@ INNER JOIN sys.query_store_query_text AS Txt
 WHERE Qry.query_id = <ID>
 ```
 
+```sql
+--
+-- The following SQL will list out the databases in the given elastic pool sorted by most active CPU utilization.
+-- NOTE, this query should either be executed on a database either in the primary (read/write) or replica (read-only).
+-- If the query is executed on a replica database, the result will be based on all the other replica databases.
+-- This means the query result WILL BE DIFFERENT if executed on a primary (read/write) vs. replica (read-only) database.
+--
+select group_id,
+       name,
+       g.database_name,
+       Min(snapshot_time) as MinTime,
+       Max(snapshot_time) as MaxTime,
+       Sum(delta_cpu_active_ms) / Sum(duration_ms / 1000.0) as AvgDeltaCPU_Active_ms_persec,
+       Sum(delta_cpu_usage_ms) / Sum(duration_ms / 1000.0) as AvgDeltaCPU_Usage_ms_persec,
+       Sum(delta_background_writes) / Sum(duration_ms / 1000.0) as avgWrites_PerSec,
+       Sum(delta_reads_issued) / Sum(duration_ms / 1000.0) as AvgReads_perSec,
+       Sum(delta_log_bytes_used / 1024.0 / 1024.0) / Sum(duration_ms / 1000.0) as avg_log_mb_persec,
+       Avg(max_io) as MaxIO_avg,Avg(max_log_rate_kb / 1024.0) as max_log_rate_mb
+from   sys.dm_resource_governor_workload_groups_history_ex e,
+       sys.dm_user_db_resource_governance g
+where  name like 'UserPrimary%'
+       and name = 'UserPrimaryGroup.DBId' + convert(varchar(10), g.database_id)
+group  by name,group_id,g.database_name
+order  by AvgDeltaCPU_Active_ms_persec desc;
+```
