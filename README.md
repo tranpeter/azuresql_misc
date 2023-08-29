@@ -2,7 +2,7 @@
 
 This repo captures a bunch of useful Azure SQLs I use.
 
-```
+```sql
 -- Useful to find out whether the hostname and utilization. This query is used to find the database and instance CPU utilization.
 -- This query is handy to monitor the read-replica since this is not readily exposed on Azure Portal.
 -- Note the following 3 SQLs are usually executed together the first time to verify host_name and whether the database is read-only.
@@ -28,3 +28,50 @@ BEGIN
     order by end_time desc;
 END;
 ```
+
+
+```sql
+-- When this is used for fixing suddenly poor response times from guidance,
+-- RUN this on the READ-REPLICAS
+ 
+-- This can be executed against read-only replicas. Each replica will parse and generate the execution plan
+-- independently of any other replica. It's possible to have different execution plans (highly unlikely)
+-- for the same query across different replicas.
+ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE;
+```
+
+```sql
+-- Get the number of connections to the database.
+--
+select a.dbid,a.program_name, count(a.dbid) as TotalConnections
+from sys.sysprocesses a
+inner join sys.databases b on a.dbid = b.database_id
+group by a.dbid, a.program_name;
+```
+
+```sql
+--
+-- Get SQL text by partial matching
+--
+SELECT Txt.query_text_id, Txt.query_sql_text, Pl.plan_id, Pl.query_plan, Qry.*
+FROM sys.query_store_plan AS Pl
+INNER JOIN sys.query_store_query AS Qry
+    ON Pl.query_id = Qry.query_id
+INNER JOIN sys.query_store_query_text AS Txt
+    ON Qry.query_text_id = Txt.query_text_id
+WHERE Txt.query_sql_text LIKE '(@P1 NVARCHAR(4000),@P2 INT,@P0 INT)SELECT TOP(@P0) CUSTOMER_ID AS CUST_ID%'
+ 
+-- OR
+
+--
+-- Get SQL text by query id (when Query Store isn't available)
+--
+SELECT Txt.query_text_id, Txt.query_sql_text, Pl.plan_id, Pl.query_plan, Qry.*
+FROM sys.query_store_plan AS Pl
+INNER JOIN sys.query_store_query AS Qry
+    ON Pl.query_id = Qry.query_id
+INNER JOIN sys.query_store_query_text AS Txt
+    ON Qry.query_text_id = Txt.query_text_id
+WHERE Qry.query_id = <ID>
+```
+
