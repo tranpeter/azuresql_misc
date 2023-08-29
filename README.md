@@ -1,6 +1,9 @@
 # azuresql_misc
 
-This repo captures a bunch of useful Azure SQLs I use.
+This repo captures a bunch of useful diagnostic Azure SQLs.
+
+These [Azure SQL Tips](https://github.com/microsoft/azure-sql-tips/wiki/Azure-SQL-Database-tips) are super useful when executed against database that you want to profile.
+
 
 ```sql
 -- Useful to find out whether the hostname and utilization. This query is used to find the database and instance CPU utilization.
