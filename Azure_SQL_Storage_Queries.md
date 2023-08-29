@@ -114,3 +114,19 @@ FROM sys.dm_db_missing_index_groups mig
 WHERE CONVERT (decimal (28, 1),migs.avg_total_user_cost * migs.avg_user_impact * (migs.user_seeks + migs.user_scans)) > 10
 ORDER BY migs.avg_total_user_cost * migs.avg_user_impact * (migs.user_seeks + migs.user_scans) DESC
 ```
+
+# Misc storage
+```sql
+-- Returns file_id, current size, max size, and % full
+select file_id, sizeInGB = size* 8/(1024*1024), maxSizeInGB = max_size *8/(1024*1024)
+       , physical_name, precentFull = size /(max_size*1.0)*100
+from sys.database_files
+where TYPE_desc = 'ROWS';
+ 
+-- Returns size, # of free pages, and free space availbe
+SELECT file_id,SUM(unallocated_extent_page_count) AS [free pages],  
+       (SUM(unallocated_extent_page_count)*1.0/128) AS [free space in MB]
+FROM sys.dm_db_file_space_usage
+group by file_id
+```
+
