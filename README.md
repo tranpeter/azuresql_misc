@@ -127,3 +127,33 @@ FROM   sys.dm_exec_sessions AS s
 WHERE  session_id = @@SPID
   AND  d.database_id = DB_ID();
 ```
+
+# Check wait state
+```sql
+-- current wait types at database level
+select * from sys.dm_db_wait_stats
+
+-- currently executing queries in the database
+SELECT t.text, qp.query_plan, req.query_hash, 
+       req.session_id, req.request_id, req.database_id, req.start_time, req.status, req.command, 
+       req.blocking_session_id, req.wait_type, req.wait_time, req.last_wait_type, 
+       req.cpu_time, req.total_elapsed_time, req.logical_reads
+FROM sys.dm_exec_requests AS req
+CROSS APPLY sys.dm_exec_sql_text(req.sql_handle) AS t
+CROSS APPLY sys.dm_exec_query_plan(req.plan_handle) AS qp
+
+-- formerly executed queries from Query Store - filter on query_id or query_hash as needed
+SELECT top 50
+       qs.query_id, qp.plan_id, qs.query_hash, qp.query_plan_hash, qt.query_sql_text, 
+       qw.wait_category_desc, qw.min_query_wait_time_ms, qw.max_query_wait_time_ms, cast(qp.query_plan as xml) query_plan
+FROM   sys.query_store_plan AS qp
+INNER JOIN sys.query_store_query AS qs ON qp.query_id = qs.query_id
+INNER JOIN sys.query_store_query_text AS qt ON qt.query_text_id = qs.query_text_id
+LEFT OUTER JOIN sys.query_store_wait_stats qw on qp.plan_id = qw.plan_id
+WHERE
+       is_internal_query = 0
+       -- filter on additional criteria, if available:
+       -- AND qt.query_sql_text like '%TableName%'
+       -- AND qs.query_id in (1234)
+       -- AND qs.query_hash in (0x3D251D2A95CEE0FA)
+```
